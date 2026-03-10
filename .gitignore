@@ -1,0 +1,17 @@
+# Raw market data — too large for GitHub
+MarketData/
+
+# Not used code
+not_used_code/
+
+# Processed data files
+data/
+
+# Trained model files
+*.pkl
+
+# Python virtual environment
+myvenv/
+__pycache__/
+*.pyc
+
