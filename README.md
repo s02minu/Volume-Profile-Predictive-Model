@@ -4,18 +4,19 @@ Well, I was thinking about a final project for my associate degree in Data Scien
 
 I did some day trading as a hobby, where I encountered order flow concepts. And despite having understood the theoretical part of these concepts, I struggled when it came to applying my learning to the markets. This was in part because of the human side of the equation — my emotions. Long story short I am looking for a way to transform the decision making into a more mechanical and automatic process, hopefully helping me become more profitable. Hence this project.
 
-I'll first be building my own version of the volume profile using my Python skills and then create a predictive model that would guide me into making the right decision. The final part would be to apply it to the market (manually), if I successfully create this model.
+I'll first be building my own version of the volume profile using my Python skills and then create a predictive model that would guide me into making the right decision. The final part would be to apply it to the market (manually), if successfully created.
 
 ---
 
 ## What is Volume Profile?
 
-I guess it makes sense to start by explaining what Volume Profile is. Volume Profile (VP) is none otherthan an organization of price data in a way where we have a visual representation of where traders were willing to trade. The core idea is auction theory, which states that price will tend back to where it's considered fair value. So, if in any trading day, there was a level in which traders were willing to trade around, it's very likely that that level will be revisited and traded around soon, acting as a kind of magnet.
+I guess it makes sense to start by explaining what Volume Profile is. Volume Profile (VP) is none other than an organization of price data in a way where we have a visual representation of where traders were willing to trade. The core idea is auction theory, which states that price will tend back to where it's considered fair value. So, if in any trading day, there was a level in which traders were willing to trade around, it's very likely that that level will be revisited and traded around soon, acting as a kind of magnet.
 
 VP is essentially a vertical histogram mapped along the price axis, mirroring the shape of a normal distribution bell curve.
 
 <p align="center">
-<img width="900" height="564" alt="Fig  1 Volume Profile and Normal Distribution" src="https://github.com/user-attachments/assets/4500ae8a-abba-4dc4-8030-463bcd559e8f" />
+<img width="1165" height="564" alt="image" src="https://github.com/user-attachments/assets/3a872d6a-1c69-471e-8b25-11724728a8d3" />
+
 </p>
 
 ### Core Concepts
@@ -28,7 +29,7 @@ VP is essentially a vertical histogram mapped along the price axis, mirroring th
 
 > The 70% figure is a convention (originating from CBOT Market Profile methodology), not a mathematical law. The Value Area is calculated around the POC and then expanded outward until ~70% of total volume is included.
 
-There is of course more to VP than this obviously, but as this is primarily a Machine Learning project, I will not be diving deeper into VP theory (DYOR). Instead, I'm going to build a model that looks at Bitcoin's volume profile and tries to predict whether price will move in a certain direction or reach a certain level. For example — price is sitting just below the POC, will it break through and accept above it, or get rejected? The model will learn from historical examples of that same setup and will generate signals if proven to have a predictive edge.
+There is more to VP than this obviously, but as this is primarily a Machine Learning project, I will not be diving deeper into VP theory. Instead, I'm going to build a model that looks at Bitcoin's volume profile and tries to predict whether price will move in a certain direction or reach a certain level. For example — price is sitting just below the POC, will it break through and accept above it, or get rejected? The model will learn from historical examples of that same setup and will generate signals if proven to have a predictive edge.
 
 ---
 
@@ -37,7 +38,7 @@ There is of course more to VP than this obviously, but as this is primarily a Ma
 This project is organized as a modular pipeline. Each module has a single responsibility and feeds into the next. See the flowchart for a visual overview of how everything connects.
 
 <p align="center">
-<img width="737" height="1247" alt="VP Fluxogram drawio" src="https://github.com/user-attachments/assets/33c18d1c-0b9b-4512-90f7-98c788c09093" />
+<img width="737" height="1247" alt="image" src="https://github.com/user-attachments/assets/baa1c1b9-9082-4682-8694-303a6f36f2b1" />
 </p>
 
 
@@ -63,6 +64,10 @@ As the name implies, this is the step where all the BTCUSDT tick data is loaded 
 The raw data was manually downloaded from [data.binance.vision](https://data.binance.vision) as monthly zip files covering 6 months of BTCUSDT perpetual futures trades. Each file contains every individual trade that occurred that month, including the price, quantity, timestamp, and whether the buyer or seller was the market aggressor (`is_buyer_maker`).
 
 When attempting to load this data directly into a pandas DataFrame, the program consistently crashed due to memory exhaustion — 6 months of BTC tick data amounts to tens of millions of rows, which exceeds what 16GB of RAM can handle all at once.
+
+<p align="center">
+<img width="1598" height="707" alt="image" src="https://github.com/user-attachments/assets/1bf97894-7abd-44b2-993f-d8228da55b10" />
+</p>
 
 **The solution was DuckDB** — a database engine that runs entirely on your machine with no server setup required. Instead of loading all rows into RAM simultaneously, DuckDB processes the data file by file and only hands pandas the final query result, which is a fraction of the size.
 
@@ -149,7 +154,13 @@ The data is loaded directly from the saved CSV files generated by `volume_profil
 
 To validate our VP engine we plotted January 30th 2026 and compared the results against ATAS:
 
-| Level | Our Model | ATAS | Difference |
+<p align="center">
+<img width="500" height="850" alt="image" src="https://github.com/user-attachments/assets/2fc6ebf0-86cd-40ac-886b-c6bdd5e31702" /> <img width="500" height="450" alt="image" src="https://github.com/user-attachments/assets/cc83dbb9-d753-4b22-8ce5-eab51925df4d" />
+</p>
+
+
+
+| Level | Model | ATAS | Difference |
 |---|---|---|---|
 | POC | 82800 | 82900 | $100 |
 | VAH | 83450 | 83470 | $20 |
@@ -163,7 +174,7 @@ With the VP engine validated, the project is ready to move into the ML phase.
 
 ## features.py
 
-This module takes the VP levels computed by `volume_profile.py` and transforms them into structured numerical inputs that the ML model can actually learn from. A model can't read a chart — it needs numbers, and this is where we create them.
+This module takes the VP levels computed by `volume_profile.py` and transforms them into structured numerical inputs that the ML model can learn from. A model can't read a chart — it needs numbers, and this is where they created.
 
 The core idea is simple — yesterday's VP describes the market context, and today's price action is the outcome. So every feature here is derived from the **previous day's** profile using pandas `shift(1)` operation, which moves each value down one row so that today's row contains yesterday's data.
 
