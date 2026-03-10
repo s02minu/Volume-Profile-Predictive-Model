@@ -15,7 +15,7 @@ I guess it makes sense to start by explaining what Volume Profile is. Volume Pro
 VP is essentially a vertical histogram mapped along the price axis, mirroring the shape of a normal distribution bell curve.
 
 <p align="center">
-<img width="1165" height="564" alt="image" src="https://github.com/user-attachments/assets/3a872d6a-1c69-471e-8b25-11724728a8d3" />
+<img width="700" height="3000" alt="image" src="https://github.com/user-attachments/assets/3a872d6a-1c69-471e-8b25-11724728a8d3" />
 
 </p>
 
@@ -38,7 +38,7 @@ There is more to VP than this obviously, but as this is primarily a Machine Lear
 This project is organized as a modular pipeline. Each module has a single responsibility and feeds into the next. See the flowchart for a visual overview of how everything connects.
 
 <p align="center">
-<img width="737" height="1247" alt="image" src="https://github.com/user-attachments/assets/baa1c1b9-9082-4682-8694-303a6f36f2b1" />
+<img width="700" height="1000" alt="image" src="https://github.com/user-attachments/assets/baa1c1b9-9082-4682-8694-303a6f36f2b1" />
 </p>
 
 
