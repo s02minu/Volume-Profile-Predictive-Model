@@ -88,9 +88,7 @@ Each raw trade file contains the following columns:
 
 ### Data Flow
 
-```
-BTCUSDT-trades-*.zip  →  DuckDB (trades table)  →  ready for volume_profile.py
-```
+<img width="732" height="176" alt="image" src="https://github.com/user-attachments/assets/feb34314-a423-4172-b58a-7151b19ba850" />
 
 ---
 
@@ -119,20 +117,8 @@ Starting from the POC — the price bucket with the highest volume — the algor
 | `data/df_ohlc.csv` | True daily OHLC extracted directly from raw ticks |
 
 ### Data Flow
+<img width="528" height="595" alt="image" src="https://github.com/user-attachments/assets/e039eb2b-bacb-472e-862a-38cf6cb3f6ee" />
 
-```
-DuckDB (trades table)
-        ↓
-build_daily_volume_profile()  →  df_vp  (price buckets + volume per day)
-        ↓
-compute_vp_levels()           →  df_levels  (POC, VAH, VAL per day)
-        ↓
-extract_daily_ohlc()          →  df_ohlc  (true daily OHLC)
-        ↓
-save_to_csv()                 →  data/df_vp.csv
-                              →  data/df_levels.csv
-                              →  data/df_ohlc.csv
-```
 
 ### Functions
 
@@ -209,9 +195,8 @@ Each day is classified based on va_coverage and delta:
 
 ### Data Flow
 
-```
-data/df_vp.csv + data/df_levels.csv + data/df_ohlc.csv  →  build_features()  →  data/df_features.csv
-```
+<img width="579" height="413" alt="image" src="https://github.com/user-attachments/assets/762d9921-93fa-4a75-baf4-73e1772fc682" />
+
 
 ---
 
@@ -265,9 +250,8 @@ The low acceptance rates in November and December 2025 correctly reflect the bea
 
 ### Data Flow
 
-```
-data/df_features.csv  →  build_labels()  →  data/df_labels.csv
-```
+<img width="685" height="120" alt="image" src="https://github.com/user-attachments/assets/db749022-e0c8-4b56-81f4-196e7b6e3f08" />
+
 
 ---
 
@@ -309,9 +293,8 @@ Model accuracy: 84% — a **20.1% improvement** over baseline.
 
 ### Data Flow
 
-```
-data/df_labels.csv  →  prepare_data()  →  train_model()  →  data/model.pkl + data/scaler.pkl
-```
+<img width="718" height="209" alt="image" src="https://github.com/user-attachments/assets/11199bcc-a9c5-4847-9993-bb7fb88c631a" />
+
 
 ---
 
@@ -339,9 +322,8 @@ The ROC curve shoots to nearly 1.0 true positive rate before the false positive 
 
 ### Data Flow
 
-```
-data/df_labels.csv + data/model.pkl + data/scaler.pkl  →  evaluate_model()  →  performance report + ROC curve
-```
+<img width="417" height="295" alt="image" src="https://github.com/user-attachments/assets/88b9852b-f902-413c-8f7c-953d403b116b" />
+
 
 ---
 
