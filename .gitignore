@@ -15,3 +15,7 @@ myvenv/
 __pycache__/
 *.pyc
 
+# Local-only folders
+presentation/
+.github/
+
