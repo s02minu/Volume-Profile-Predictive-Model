@@ -1,4 +1,5 @@
 import pandas as pd
+from pandas.core.tools.datetimes import date
 from data_loader import load_raw_ticks_to_duckdb
 
 data_path = r"MarketData"
@@ -73,22 +74,7 @@ def compute_vp_levels(df_vp):
     print(df_levels.head(10))
 
     return df_levels
-
-
-def save_to_csv(df_vp, df_levels):
-    # saving processed data to disk so other modules dont need to reprocess
-    df_vp.to_csv('data/df_vp.csv', index=False)
-    df_levels.to_csv('data/df_levels.csv', index=False)
-    print("Saved df_vp and df_levels to data/")
-
-
-def load_from_csv():
-    # loading the pre-processed data from disk — fast, no DuckDB needed
-    df_vp = pd.read_csv('data/df_vp.csv')
-    df_levels = pd.read_csv('data/df_levels.csv')
-    print("Loaded df_vp and df_levels from data/")
-    return df_vp, df_levels
-
+    
 
 def extract_daily_ohlc(con):
     # extracting daily open, high, low and close directly from raw ticks
@@ -109,12 +95,76 @@ def extract_daily_ohlc(con):
     print(df_ohlc.head())
 
     return df_ohlc
+    
+
+def extract_intraday_ohlc(con, timeframe_minutes=15):
+    """ 
+    Extract intraday OHLC (open, high, low, close) from raw ticks.
+    
+    Args:
+        con: DuckDB connection
+        timeframe_minutes: Timeframe in minutes (default 15)
+    
+    Returns:
+        DataFrame with intraday OHLC data
+    """
+    ms = timeframe_minutes * 60 * 1000 # convert to milliseconds
+    
+    query = f'''
+    select
+        epoch_ms(time_bucket)                        as datetime,
+        cast(epoch_ms(time_bucket) as timestamp)     as date,
+        first(price order by time)                   as open,
+        max(price)                                   as high,
+        min(price)                                   as low,
+        last(price order by time)                    as close,
+        sum(qty)                                     as volume
+    from(
+        select
+            price,
+            qty,
+            time,
+            (time // {ms}) * {ms}                   as time_bucket
+        from trades
+    )
+    group by time_bucket
+    order by time_bucket
+    '''
+    
+    df = con.execute(query).df()
+    df['datetime'] = pd.to_datetime(df['datetime'])
+    df['date'] = df['datetime'].dt.date
+    
+    print(f"  Intraday OHLC built: {len(df):,} candles "
+            f"({timeframe_minutes}min) across {df['date'].nunique()} days.")
+    
+    return df
+    
+    
+def save_to_csv(df_vp, df_levels, df_15min):
+    # saving processed data to disk so other modules dont need to reprocess
+    df_vp.to_csv('data/df_vp.csv', index=False)
+    df_levels.to_csv('data/df_levels.csv', index=False)
+    df_15min.to_csv("data/df_15min.csv", index=False)
+    print("Saved df_vp, df_levels, and df_15min to data/")
+
+
+def load_from_csv():
+    # loading the pre-processed data from disk — fast, no DuckDB needed
+    df_vp = pd.read_csv('data/df_vp.csv')
+    df_levels = pd.read_csv('data/df_levels.csv')
+    print("Loaded df_vp and df_levels from data/")
+    return df_vp, df_levels
+    
+
+
 
 if __name__ == "__main__":
     con = load_raw_ticks_to_duckdb(data_path)
     df_vp = build_daily_volume_profile(con, bucket_size=10)
     df_levels = compute_vp_levels(df_vp)
     df_ohlc = extract_daily_ohlc(con)
-    save_to_csv(df_vp, df_levels)
+    df_15min = extract_intraday_ohlc(con, timeframe_minutes=15)
+    save_to_csv(df_vp, df_levels, df_15min)
     df_ohlc.to_csv('data/df_ohlc.csv', index=False)
     print("Saved df_ohlc to data/df_ohlc.csv")

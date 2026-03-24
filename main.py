@@ -1,6 +1,6 @@
 import pandas as pd
 from data_loader import load_raw_ticks_to_duckdb
-from volume_profile import build_daily_volume_profile, compute_vp_levels, extract_daily_ohlc, save_to_csv, load_from_csv
+from volume_profile import build_daily_volume_profile, compute_vp_levels, extract_daily_ohlc, extract_intraday_ohlc, save_to_csv, load_from_csv
 from features import build_features
 from labels import build_labels
 from model import prepare_data, train_model, save_model
@@ -19,9 +19,10 @@ def run_pipeline():
     df_vp = build_daily_volume_profile(con, bucket_size=10)
     df_levels = compute_vp_levels(df_vp)
     df_ohlc = extract_daily_ohlc(con)
-    save_to_csv(df_vp, df_levels)
+    df_15min = extract_intraday_ohlc(con, timeframe_minutes=15)
+    save_to_csv(df_vp, df_levels, df_15min)
     df_ohlc.to_csv('data/df_ohlc.csv', index=False)
-
+            
     # step 3 — build features
     print("\n=== STEP 3: Engineering Features ===")
     df_vp, df_levels = load_from_csv()
