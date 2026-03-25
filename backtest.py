@@ -1,7 +1,7 @@
 """
 backtest.py  (v4)
 -----------------
-Backtests 3 VP-based strategies over all 183 days.
+Backtests 3 VP-based strategies over all 1126 days.
 
 Entry logic:
   - Wait for price to revisit prev_POC on a 15-min candle (first touch)
@@ -51,7 +51,7 @@ LVN_NEIGHBOURS   = 3      # buckets each side for comparison
 LVN_SEARCH_RANGE = 60     # max buckets ($600) to search from POC
 
 LABELS_PATH   = "data/df_labels.csv"
-INTRADAY_PATH = "data/df_15min.csv"
+INTRADAY_PATH = "data/df_klines_15m.csv"
 VP_PATH       = "data/df_vp.csv"
 
 STRATEGIES = {
