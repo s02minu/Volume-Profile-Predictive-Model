@@ -15,7 +15,7 @@ I guess it makes sense to start by explaining what Volume Profile is. Volume Pro
 VP is essentially a vertical histogram mapped along the price axis, mirroring the shape of a normal distribution bell curve.
 
 <p align="center">
-<img width="700" height="3000" alt="image" src="https://github.com/user-attachments/assets/3a872d6a-1c69-471e-8b25-11724728a8d3" />
+<img width="700"  alt="image" src="https://github.com/user-attachments/assets/3a872d6a-1c69-471e-8b25-11724728a8d3" />
 
 </p>
 
