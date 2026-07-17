@@ -159,7 +159,7 @@ The trained model was evaluated using multiple metrics including:
 
 The resulting **0.947 AUC** demonstrates strong discriminatory power while maintaining a substantial improvement over the baseline classifier.
 
-![ROC Curve](assets/ROC-Curve.png)
+![ROC Curve](assests/ROC-Curve.png)
 
 ---
 
