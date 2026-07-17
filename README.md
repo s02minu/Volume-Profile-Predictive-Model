@@ -97,9 +97,7 @@ using the standard **70% Value Area methodology**.
 
 The generated profiles were validated against the professional charting platform **ATAS**, producing nearly identical results.
 
-<p align="center">
-<img width="500" height="450" alt="image" src="https://github.com/user-attachments/assets/2fc6ebf0-86cd-40ac-886b-c6bdd5e31702" /> <img width="500" height="450" alt="image" src="https://github.com/user-attachments/assets/cc83dbb9-d753-4b22-8ce5-eab51925df4d" />
-</p>
+![VP Cpmparison](assests/vpVSatas.png)
 
 ---
 
