@@ -1,9 +1,6 @@
 # Raw market data — too large for GitHub
 MarketData/
 
-# Not used code
-not_used_code/
-
 # Processed data files
 data/
 
@@ -12,10 +9,26 @@ data/
 
 # Python virtual environment
 myvenv/
+.venv/
+venv/
+
+# Python bytecode
 __pycache__/
 *.pyc
+*.pyo
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Local-only folders
 presentation/
 .github/
-
+pbix/
+not_used_code/

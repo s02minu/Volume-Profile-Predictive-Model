@@ -30,29 +30,27 @@ Requires:
 import pandas as pd
 import numpy as np
 
+from src.config import DATA_DIR
+
 # ── CONFIG ────────────────────────────────────────────────────────────────
 INITIAL_CAPITAL  = 10_000
 RISK_PCT         = 0.03
 MIN_RR           = 1.5
 
 # Realistic Binance USDT-M Futures costs
-# Entry at POC = limit order = maker fee
-# TP exit      = limit order = maker fee
-# SL exit      = market order = taker fee
-# Slippage     = conservative flat estimate per side
 MAKER_FEE   = 0.0002   # 0.02%
 TAKER_FEE   = 0.0005   # 0.05%
 SLIPPAGE    = 10.0     # $10 per side (entry + exit)
 MAX_LEVERAGE = 3.0     # max position value = 3x capital
 
 # LVN detection — tuned on real BTCUSDT VP data
-LVN_THRESHOLD    = 0.65   # volume < 65% of neighbour average = LVN
-LVN_NEIGHBOURS   = 3      # buckets each side for comparison
-LVN_SEARCH_RANGE = 60     # max buckets ($600) to search from POC
+LVN_THRESHOLD    = 0.65
+LVN_NEIGHBOURS   = 3
+LVN_SEARCH_RANGE = 60
 
-LABELS_PATH   = "data/df_labels.csv"
-INTRADAY_PATH = "data/df_klines_15m.csv"
-VP_PATH       = "data/df_vp.csv"
+LABELS_PATH   = DATA_DIR / "df_labels.csv"
+INTRADAY_PATH = DATA_DIR / "df_klines_15m.csv"
+VP_PATH       = DATA_DIR / "df_vp.csv"
 
 STRATEGIES = {
     "VAH Long":    {"signal": "label_vah_acceptance", "direction": "long"},
@@ -188,10 +186,7 @@ def check_tp_sl(remaining, entry, tp, sl, direction, eod_close):
 def position_size(capital, entry, sl_distance):
     """
     Risk exactly RISK_PCT of capital.
-    qty = risk_amount / sl_distance
-
-    Capped at MAX_LEVERAGE × capital so position value
-    never exceeds a realistic margin requirement.
+    Capped at MAX_LEVERAGE x capital.
     """
     if sl_distance <= 0:
         return 0
@@ -225,7 +220,7 @@ def transaction_costs(entry, tp, sl, qty, outcome):
         exit_value = qty * sl
         exit_cost  = (exit_value * TAKER_FEE) + SLIPPAGE
     else:  # EOD — market close
-        exit_value = qty * tp   # approximate — actual EOD price used in pnl
+        exit_value = qty * tp   # approximate
         exit_cost  = (exit_value * TAKER_FEE) + SLIPPAGE
 
     return round(entry_cost + exit_cost, 4)
@@ -303,7 +298,7 @@ def run_strategy(df_signals, df_15min, df_vp, name, signal_col, direction):
             if outcome == "TP":
                 pnl = qty * tp_dist
             elif outcome == "SL":
-                pnl = -(qty * sl_dist)   # actual loss based on real qty
+                pnl = -(qty * sl_dist)
             else:
                 pnl = qty * (exit_price - entry) if direction == "long" \
                       else qty * (entry - exit_price)
@@ -461,9 +456,9 @@ def run_backtest():
     equity_out  = pd.concat(all_equity,  ignore_index=True)
     metrics_out = pd.DataFrame(all_metrics)
 
-    trades_out.to_csv("data/bt_trades.csv",   index=False)
-    equity_out.to_csv("data/bt_equity.csv",   index=False)
-    metrics_out.to_csv("data/bt_summary.csv", index=False)
+    trades_out.to_csv(DATA_DIR / "bt_trades.csv",   index=False)
+    equity_out.to_csv(DATA_DIR / "bt_equity.csv",   index=False)
+    metrics_out.to_csv(DATA_DIR / "bt_summary.csv", index=False)
 
     print("\n✓ Saved:")
     print("  data/bt_trades.csv")
@@ -475,4 +470,7 @@ def run_backtest():
 
 
 if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     run_backtest()

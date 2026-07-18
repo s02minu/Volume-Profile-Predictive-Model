@@ -1,5 +1,7 @@
 import plotly.graph_objects as go
-from volume_profile import load_from_csv
+
+from src.data.volume_profile import load_from_csv
+
 
 def plot_daily_vp(df_vp, df_levels, date):
 
@@ -90,5 +92,9 @@ def plot_daily_vp(df_vp, df_levels, date):
 
 
 if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
     df_vp, df_levels = load_from_csv()
     plot_daily_vp(df_vp, df_levels, '2026-01-30')

@@ -1,7 +1,7 @@
-# Volume Profile Predictive Model — v2
+# Volume Profile Predictive Model
 
-> **Previous version:** [v1.0-tick-data](../../tree/v1.0-tick-data) — the original pipeline built on 6 months of raw tick data.
-> **See also:** [CHANGELOG.md](CHANGELOG.md) for the full version history.
+> **Looking for v1?** The original tick-data pipeline (6 months, DuckDB) is preserved at tag [`v1.0-tick-data`](../../tree/v1.0-tick-data).
+> See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ---
 
@@ -27,7 +27,7 @@ The volume profile built from 1-minute candles is marginally less precise than o
 This matters because the 2023-2026 period includes a bear market recovery, the 2024 bull run and halving, and the 2025-2026 continuation. A strategy that only works in one regime is not a strategy — it's luck.
 
 ### Backtester
-v1 had no backtester. v2 adds `backtest.py`, which simulates all three trading strategies against the full 3-year dataset with realistic costs.
+v1 had no backtester. v2 adds a backtester which simulates all three trading strategies against the full 3-year dataset with realistic costs.
 
 **Entry logic:**
 - Wait for price to revisit the previous session's POC on a 15-minute candle — first touch only
@@ -47,26 +47,71 @@ v1 had no backtester. v2 adds `backtest.py`, which simulates all three trading s
 
 ---
 
+## Key Results
+
+- Processed 1,126 days of BTC futures data (2023-2026)
+- Built a Volume Profile feature pipeline from 1-minute OHLCV data
+- Achieved:
+  - Accuracy: 84%
+  - AUC: 0.937
+- Identified `price_vs_prev_poc` as the strongest predictive feature
+- Built a realistic backtester including:
+  - Trading fees
+  - Slippage
+  - Position sizing
+  - Risk management
+
+Main finding:
+The model demonstrates predictive edge, but transaction costs significantly reduce profitability at the current trading frequency.
+
+
 ## Project Structure
 
-The pipeline is now 7 modules. `data_loader.py` and the DuckDB dependency are gone. Everything else carries over from v1 with minor updates.
+```
+├── src/
+│   ├── config.py                 # Centralized paths
+│   ├── main.py                   # Pipeline orchestrator
+│   ├── data/
+│   │   ├── api_loader.py         # Fetches 1-min klines from Binance API
+│   │   └── volume_profile.py     # Builds daily VP, computes POC/VAH/VAL
+│   ├── features/
+│   │   ├── features.py           # Extracts ML features from VP levels
+│   │   └── labels.py             # Creates binary labels for supervised learning
+│   ├── model/
+│   │   ├── model.py              # Trains and saves the ML model
+│   │   └── evaluation.py         # Measures predictive edge (ROC, AUC)
+│   ├── backtest/
+│   │   └── backtest.py           # Simulates trading strategies with realistic costs
+│   └── viz/
+│       └── visualize.py          # Plots VP for sanity checking
+├── data/                         # Generated CSVs and model artifacts (gitignored)
+├── assets/                       # Images for documentation
+├── requirements.txt
+├── CHANGELOG.md
+└── README.md
+```
 
-| Module | File | Description |
-|---|---|---|
-| API Loader | `api_loader.py` | Fetches 1-min klines from Binance API |
-| Volume Profile Engine | `volume_profile.py` | Builds daily VP and computes POC, VAH, VAL |
-| Visualizer | `visualize.py` | Plots VP for sanity checking |
-| Feature Engineering | `features.py` | Extracts ML features from VP levels |
-| Label Generator | `labels.py` | Creates binary labels for supervised learning |
-| Model | `model.py` | Trains and evaluates the ML model |
-| Evaluation | `evaluation.py` | Measures predictive edge |
-| Backtester | `backtest.py` | Simulates trading strategies with realistic costs |
+### Running the pipeline
 
-Run the pipeline:
 ```bash
-python api_loader.py        # fetch klines — only needed once
-python main.py --skip-fetch # build VP → features → labels → model → evaluation
-python backtest.py          # run backtest separately
+pip install -r requirements.txt
+
+# Full pipeline — fetches 3 years of klines (~10 min), then builds everything
+python -m src.main
+
+# Skip the API fetch if you already have the kline CSVs
+python -m src.main --skip-fetch
+
+# Run backtest separately
+python -m src.backtest.backtest
+
+# Run individual modules standalone
+python -m src.data.api_loader
+python -m src.data.volume_profile
+python -m src.features.features
+python -m src.model.model
+python -m src.model.evaluation
+python -m src.viz.visualize
 ```
 
 ---
@@ -85,13 +130,13 @@ No API key required. No DuckDB. No manual downloads.
 
 ## volume_profile.py
 
-Same algorithm as v1 — $10 price buckets, 70% value area, POC/VAH/VAL computed per day. The only difference is the input: instead of querying DuckDB for raw ticks, it reads from `df_klines_1m.csv` and aggregates by close price per candle.
+Same algorithm as v1 — $10 price buckets, 70% value area, POC/VAH/VAL computed per day. The difference is the input: instead of querying DuckDB for raw ticks, it reads from the 1-min klines and aggregates by close price per candle.
 
 1,127 days of volume profile computed in under 5 seconds.
 
 ---
 
-## Model Results (v2 — 1,126 days)
+## Model Results (1,126 days)
 
 With 6x more data the model numbers are more trustworthy.
 
@@ -108,7 +153,7 @@ The strongest predictor remained `price_vs_prev_poc` with a coefficient of +3.06
 
 ---
 
-## Backtest Results (v2 — 1,126 days)
+## Backtest Results (1,126 days)
 
 This is where things got honest.
 
@@ -132,13 +177,13 @@ None of the strategies beat buy and hold — but that was expected. BTC went fro
 - **Walk-forward validation** — the backtest uses a single fixed train/test split. A proper walk-forward test would retrain the model on a rolling window to simulate live deployment more accurately.
 - **Trend day entries** — the backtester only enters when price revisits the POC. Days where price opens and never looks back (trend days) are skipped entirely. These are a separate setup that needs its own logic.
 - **Multiple instruments** — the pipeline is instrument-agnostic. The same code could run on ES futures, NQ, crude oil or any liquid instrument with accessible 1-min data. Testing across instruments would confirm whether the VP edge generalises.
-- **Power BI dashboard** — the three output CSVs (`bt_trades.csv`, `bt_equity.csv`, `bt_summary.csv`) are designed to feed directly into a Power BI dashboard for visual strategy comparison. This is the next step.
+- **Power BI dashboard** — the three output CSVs (`bt_trades.csv`, `bt_equity.csv`, `bt_summary.csv`) are designed to feed directly into a Power BI dashboard for visual strategy comparison.
 
 ---
 
 ## Future Improvements
 
-These are ordered by priority — the same logic as v1 but updated to reflect what the backtest revealed.
+These are ordered by priority — updated to reflect what the backtest revealed.
 
 1. **Reduce trade frequency** — apply stricter signal filters to take only the highest-quality setups. Fewer trades with better R:R will dramatically reduce the fee drag.
 2. **Walk-forward validation** — replace the static 80/20 split with a rolling window to measure how the model performs on truly unseen data over time.

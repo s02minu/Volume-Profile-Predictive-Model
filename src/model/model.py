@@ -6,6 +6,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
+from src.config import DATA_DIR
+
 
 def prepare_data(df_labels, label_col='label_vah_acceptance'):
 
@@ -42,29 +44,22 @@ def prepare_data(df_labels, label_col='label_vah_acceptance'):
 
 def train_model(X, y):
 
-    # splitting into training and testing sets
-    # 80% for training, 20% for testing
-    # random_state ensures reproducibility
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
-    # scaling features so no single feature dominates due to its size
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # training logistic regression as our baseline model
     model = LogisticRegression(random_state=42)
     model.fit(X_train_scaled, y_train)
 
-    # evaluating on the unseen test set
     y_pred = model.predict(X_test_scaled)
 
     print("Classification Report:")
     print(classification_report(y_test, y_pred))
 
-    # confusion matrix — visual representation of correct vs incorrect predictions
     cm = confusion_matrix(y_test, y_pred)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['No', 'Yes'])
     disp.plot(cmap='Blues')
@@ -76,8 +71,6 @@ def train_model(X, y):
 
 
 def show_feature_importance(model, feature_cols):
-    # logistic regression coefficients tell us which features
-    # the model is relying on most — positive = bullish signal, negative = bearish
     importance = pd.DataFrame({
         'feature': feature_cols,
         'coefficient': model.coef_[0]
@@ -88,14 +81,18 @@ def show_feature_importance(model, feature_cols):
 
 
 def save_model(model, scaler):
-    # saving trained model and scaler to disk for use in main.py
-    joblib.dump(model, 'data/model.pkl')
-    joblib.dump(scaler, 'data/scaler.pkl')
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, DATA_DIR / "model.pkl")
+    joblib.dump(scaler, DATA_DIR / "scaler.pkl")
     print("\nModel and scaler saved to data/")
 
 
 if __name__ == "__main__":
-    df_labels = pd.read_csv('data/df_labels.csv')
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+    df_labels = pd.read_csv(DATA_DIR / "df_labels.csv")
     X, y, feature_cols = prepare_data(df_labels)
     model, scaler, X_test_scaled, y_test, y_pred = train_model(X, y)
     show_feature_importance(model, feature_cols)

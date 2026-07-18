@@ -6,22 +6,21 @@ from sklearn.metrics import (
     roc_curve,
     roc_auc_score
 )
-from model import prepare_data
+
+from src.config import DATA_DIR
+from src.model.model import prepare_data
 
 
 def load_model():
-    # loading the trained model and scaler from disk
-    model = joblib.load('data/model.pkl')
-    scaler = joblib.load('data/scaler.pkl')
+    model = joblib.load(DATA_DIR / "model.pkl")
+    scaler = joblib.load(DATA_DIR / "scaler.pkl")
     return model, scaler
 
 
 def evaluate_model(model, scaler, X, y, feature_cols):
 
-    # scaling the features
     X_scaled = scaler.transform(X)
 
-    # getting predictions and probabilities
     y_pred = model.predict(X_scaled)
     y_prob = model.predict_proba(X_scaled)[:, 1]
 
@@ -30,7 +29,6 @@ def evaluate_model(model, scaler, X, y, feature_cols):
     print(classification_report(y, y_pred))
 
     # ── BASELINE COMPARISON ──────────────────────────────────────────────────
-    # how much better are we than just always predicting the majority class?
     baseline = max(y.mean(), 1 - y.mean()) * 100
     model_acc = (y == y_pred).mean() * 100
     print(f"Baseline accuracy (majority class): {baseline:.1f}%")
@@ -38,8 +36,6 @@ def evaluate_model(model, scaler, X, y, feature_cols):
     print(f"Improvement over baseline:          {model_acc - baseline:.1f}%")
 
     # ── ROC CURVE ────────────────────────────────────────────────────────────
-    # ROC curve shows the tradeoff between catching true positives
-    # and avoiding false positives at different probability thresholds
     fpr, tpr, thresholds = roc_curve(y, y_prob)
     auc = roc_auc_score(y, y_prob)
 
@@ -70,7 +66,11 @@ def evaluate_model(model, scaler, X, y, feature_cols):
 
 
 if __name__ == "__main__":
-    df_labels = pd.read_csv('data/df_labels.csv')
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+    df_labels = pd.read_csv(DATA_DIR / "df_labels.csv")
     X, y, feature_cols = prepare_data(df_labels)
     model, scaler = load_model()
     y_pred, y_prob, auc = evaluate_model(model, scaler, X, y, feature_cols)
