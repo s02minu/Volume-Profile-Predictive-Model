@@ -1,69 +1,60 @@
 # Volume Profile Predictive Model
 
-> **Looking for v1?** The original tick-data pipeline (6 months, DuckDB) is preserved at tag [`v1.0-tick-data`](../../tree/v1.0-tick-data).
-> See [CHANGELOG.md](CHANGELOG.md) for the full version history.
+An ML pipeline that uses **Volume Profile** — a market microstructure tool used by institutional traders — to predict next-session price behavior on Bitcoin futures. Built from scratch in Python using 3 years of real market data.
+
+`Python` · `pandas` · `NumPy` · `scikit-learn` · `Plotly` · `Binance API`
 
 ---
 
-After finishing v1, I had a working ML pipeline and a model with real predictive edge — 84% accuracy, AUC of 0.95. But there was one thing I couldn't ignore: 183 days is not enough data to trust a backtest. You can get lucky over 6 months. You cannot get lucky over 3 years across multiple market regimes.
-
-So v2 is about two things. First, replacing the raw tick data pipeline with a cleaner API-based approach that makes it easy to pull as much historical data as needed. Second, building a proper backtester that models real trading costs — because a strategy that looks great before fees can look terrible after them. And I wanted to find out which one this was.
+![Volume Profile validated against ATAS](assets/vpVSatas.png)
 
 ---
 
-## What Changed from v1
+## What This Project Does
 
-### Data Source
-v1 used raw Binance tick data downloaded manually as monthly zip files and loaded into DuckDB to avoid RAM crashes. It worked, but it was slow to set up and limited to however many months I had downloaded.
+1. **Fetches** 1.6 million 1-minute candles from Binance's public API (no key required)
+2. **Builds** a daily Volume Profile for each session — POC, VAH, VAL, value area width, delta, buy ratio
+3. **Engineers** 15 ML features from the previous day's profile to predict today's price action
+4. **Trains** a logistic regression model that achieves **84% accuracy** and **0.937 AUC** on 1,126 days of unseen data
+5. **Backtests** three trading strategies with realistic fees, slippage, and position sizing across multiple market regimes
 
-v2 replaces all of that with a single API call to Binance's public futures endpoint. No authentication required, no manual downloads, no DuckDB. The API returns 1-minute OHLCV candles which are aggregated directly into the volume profile. Three years of data downloads in about 10 minutes.
-
-The volume profile built from 1-minute candles is marginally less precise than one built from individual ticks, but the difference at $10 bucket resolution is negligible — and the v1 validation against ATAS already confirmed the engine works correctly.
-
-### Data Range
-- v1: August 2025 → January 2026 (183 days, 1 market regime)
-- v2: January 2023 → January 2026 (1,126 days, multiple regimes)
-
-This matters because the 2023-2026 period includes a bear market recovery, the 2024 bull run and halving, and the 2025-2026 continuation. A strategy that only works in one regime is not a strategy — it's luck.
-
-### Backtester
-v1 had no backtester. v2 adds a backtester which simulates all three trading strategies against the full 3-year dataset with realistic costs.
-
-**Entry logic:**
-- Wait for price to revisit the previous session's POC on a 15-minute candle — first touch only
-- Entry at POC price (limit order)
-- TP at previous session's VAH (longs) or VAL (shorts)
-- SL at the nearest LVN (Low Volume Node) on the correct side of the POC, detected from the previous day's volume profile
-- Skip the trade if R:R < 1.5
-
-**Risk management:**
-- 3% of capital risked per trade
-- Position size capped at 3x leverage to prevent runaway compounding
-
-**Costs modelled:**
-- Maker fee: 0.02% (entry and TP exits — limit orders)
-- Taker fee: 0.05% (SL exits — market orders)
-- Slippage: $10 flat per side
+The strongest predictor is `price_vs_prev_poc` — whether today's price sits above or below yesterday's Point of Control. That single feature carries a coefficient of +3.06 in the model.
 
 ---
 
-## Key Results
+## Model Performance
 
-- Processed 1,126 days of BTC futures data (2023-2026)
-- Built a Volume Profile feature pipeline from 1-minute OHLCV data
-- Achieved:
-  - Accuracy: 84%
-  - AUC: 0.937
-- Identified `price_vs_prev_poc` as the strongest predictive feature
-- Built a realistic backtester including:
-  - Trading fees
-  - Slippage
-  - Position sizing
-  - Risk management
+Trained and evaluated on 1,126 trading days (January 2023 → January 2026), spanning a bear market recovery, the 2024 halving rally, and the 2025-2026 continuation.
 
-Main finding:
-The model demonstrates predictive edge, but transaction costs significantly reduce profitability at the current trading frequency.
+| Metric | Value |
+|---|---|
+| Accuracy | 84% |
+| Baseline (majority class) | 70.5% |
+| Improvement over baseline | +13.5% |
+| AUC | 0.937 |
 
+![ROC Curve](assets/ROC-Curve.png)
+
+![Confusion Matrix](assets/Confusion%20Matrix.png)
+
+---
+
+## Backtest Results
+
+The backtester simulates three strategies with realistic Binance futures costs: 0.02% maker fee, 0.05% taker fee, $10 slippage per side, 3% risk per trade, 3x leverage cap, and a minimum 1.5 R:R filter.
+
+| Strategy | Trades | Win Rate | Gross P&L | Fees | Net P&L | Return | Sharpe |
+|---|---|---|---|---|---|---|---|
+| POC Bullish | 219 | 27.9% | +$11,173 | -$9,143 | +$2,030 | +20.3% | 0.62 |
+| POC Bearish | 158 | 25.9% | +$8,796 | -$6,458 | +$2,338 | +23.4% | 0.70 |
+| VAH Long | 211 | 19.0% | +$3,453 | -$7,495 | -$4,042 | -40.4% | -2.22 |
+| Buy & Hold | — | — | — | — | +$40,686 | +406.9% | — |
+
+The POC Bullish and POC Bearish strategies are net profitable after realistic costs. None beat buy-and-hold — but BTC went from $16k to $96k over this period. No active day trading strategy paying round-trip fees is going to outperform a 6x bull run. The more relevant question is whether the edge survives in a sideways or bearish regime, and that requires further testing.
+
+The backtest's main finding: **transaction costs are the biggest enemy at this trade frequency.** All three strategies show positive gross edge, but fees eat most of it. The next step is reducing trade frequency with stricter signal filters rather than taking every setup.
+
+---
 
 ## Project Structure
 
@@ -116,91 +107,44 @@ python -m src.main --skip-fetch
 
 # Run backtest separately
 python -m src.backtest.backtest
-
-# Run individual modules standalone
-python -m src.data.api_loader
-python -m src.data.volume_profile
-python -m src.features.features
-python -m src.model.model
-python -m src.model.evaluation
-python -m src.viz.visualize
 ```
 
 ---
 
-## api_loader.py
+## How It Works
 
-This replaces `data_loader.py` entirely. It hits Binance's public futures API endpoint (`/fapi/v1/klines`) and handles pagination automatically — Binance returns a maximum of 1,000 candles per request, so the loader loops and stitches them together until the full date range is covered.
+### Data
 
-It outputs two files:
-- `data/df_klines_1m.csv` — 1.6 million 1-minute candles
-- `data/df_klines_15m.csv` — the same data aggregated to 15-minute candles, used by the backtester
+The pipeline hits Binance's public futures endpoint (`/fapi/v1/klines`) and handles pagination automatically — Binance returns max 1,000 candles per request, so the loader loops and stitches them together. Three years of 1-minute data downloads in about 10 minutes. No API key, no DuckDB, no manual downloads.
 
-No API key required. No DuckDB. No manual downloads.
+### Volume Profile
 
----
+Each day's 1-minute candles are aggregated into $10 price buckets. The engine computes the POC (highest-volume bucket), then expands outward until 70% of total volume is captured — defining the Value Area (VAH at the top, VAL at the bottom). The generated profiles were validated against the professional charting platform ATAS, producing nearly identical results.
 
-## volume_profile.py
+### Feature Engineering
 
-Same algorithm as v1 — $10 price buckets, 70% value area, POC/VAH/VAL computed per day. The difference is the input: instead of querying DuckDB for raw ticks, it reads from the 1-min klines and aggregates by close price per candle.
+Yesterday's Volume Profile becomes today's input. The pipeline shifts all VP metrics by one day and computes 15 features including value area width, POC position, delta (net buying pressure), buy ratio, day type classification (accumulation / distribution / trending / neutral), and price distance to previous key levels.
 
-1,127 days of volume profile computed in under 5 seconds.
+### Backtester
 
----
-
-## Model Results (1,126 days)
-
-With 6x more data the model numbers are more trustworthy.
-
-| Metric | v1 (183 days) | v2 (1,126 days) |
-|---|---|---|
-| Accuracy | 84% | 84% |
-| Baseline | 63.9% | 70.5% |
-| Improvement | +20.1% | +15.5% |
-| AUC | 0.95 | 0.937 |
-
-The accuracy held. The AUC held. The improvement over baseline dropped slightly because the 3-year dataset has a higher baseline — BTC accepted above the previous VAH 70.5% of the time over this period, reflecting the strong bull market of 2023-2026.
-
-The strongest predictor remained `price_vs_prev_poc` with a coefficient of +3.06 — if today's price is above yesterday's POC, the model already has its most powerful bullish signal before the session even starts.
+Entry on first 15-minute candle touching the previous session's POC. Stop loss at the nearest Low Volume Node (LVN) detected from the previous day's profile. Take profit at the previous VAH (longs) or VAL (shorts). Trades are skipped if the risk-reward ratio falls below 1.5.
 
 ---
 
-## Backtest Results (1,126 days)
+## Future Work
 
-This is where things got honest.
-
-| Strategy | Trades | Win Rate | Gross P&L | Fees | Net P&L | Return | Sharpe |
-|---|---|---|---|---|---|---|---|
-| VAH Long | 211 | 19.0% | +$3,453 | -$7,495 | -$4,042 | -40.4% | -2.22 |
-| POC Bullish | 219 | 27.9% | +$11,173 | -$9,143 | +$2,030 | +20.3% | 0.62 |
-| POC Bearish | 158 | 25.9% | +$8,796 | -$6,458 | +$2,338 | +23.4% | 0.70 |
-| Buy & Hold | — | — | — | — | +$40,686 | +406.9% | — |
-
-The strategies that trade with the trend (POC Bullish and POC Bearish) show positive returns after realistic fees. VAH Long underperforms because the VAH is often close to the entry price, making the R:R unfavourable even with the LVN stop loss.
-
-None of the strategies beat buy and hold — but that was expected. BTC went from $16k to $96k over this period. No active day trading strategy paying 0.02-0.05% fees per round trip is going to beat that in a pure 6x bull run. The more relevant question is whether the edge is real and whether it survives in a sideways or bearish regime. That requires further testing.
-
-**The honest takeaway:** the backtest revealed that transaction costs are the biggest enemy at this trade frequency. The strategies have gross edge (positive P&L before fees on POC Bullish and POC Bearish) but the net edge after costs is thin. The next step is reducing trade frequency and improving signal quality rather than taking every setup.
+1. **Stricter signal filters** — reduce trade frequency to cut fee drag
+2. **Walk-forward validation** — replace the static 80/20 split with a rolling window
+3. **Power BI dashboard** — visualize equity curves and strategy comparison
+4. **Trend day detection** — separate entry logic for directional days that never revisit the POC
+5. **Naked POC tracking** — unvisited POCs from prior sessions as additional features
+6. **Ensemble models** — test Random Forest and XGBoost against the logistic regression baseline
+7. **Live signal generator** — Binance WebSocket for real-time end-of-day signals
 
 ---
 
-## What This Version Doesn't Do (Yet)
+## Version History
 
-- **Walk-forward validation** — the backtest uses a single fixed train/test split. A proper walk-forward test would retrain the model on a rolling window to simulate live deployment more accurately.
-- **Trend day entries** — the backtester only enters when price revisits the POC. Days where price opens and never looks back (trend days) are skipped entirely. These are a separate setup that needs its own logic.
-- **Multiple instruments** — the pipeline is instrument-agnostic. The same code could run on ES futures, NQ, crude oil or any liquid instrument with accessible 1-min data. Testing across instruments would confirm whether the VP edge generalises.
-- **Power BI dashboard** — the three output CSVs (`bt_trades.csv`, `bt_equity.csv`, `bt_summary.csv`) are designed to feed directly into a Power BI dashboard for visual strategy comparison.
+This is **v2**. The original pipeline (v1) used 6 months of raw tick data loaded via DuckDB. v2 replaced that with the API-based approach, expanded to 3 years, and added the backtester. The model accuracy held at 84% across both versions.
 
----
-
-## Future Improvements
-
-These are ordered by priority — updated to reflect what the backtest revealed.
-
-1. **Reduce trade frequency** — apply stricter signal filters to take only the highest-quality setups. Fewer trades with better R:R will dramatically reduce the fee drag.
-2. **Walk-forward validation** — replace the static 80/20 split with a rolling window to measure how the model performs on truly unseen data over time.
-3. **Power BI dashboard** — visualise the equity curves, trade log, and strategy comparison in an interactive dashboard.
-4. **Trend day detection** — build a separate label and entry logic for days where price opens and moves directionally without revisiting the POC.
-5. **Naked POC tracking** — identify unvisited POCs from previous sessions and add them as features. These act as magnets in VP theory.
-6. **More complex models** — test Random Forest and XGBoost against the logistic regression baseline.
-7. **Live signal generator** — connect to Binance WebSocket for real-time end-of-day signal generation.
+v1 is preserved at tag [`v1.0-tick-data`](../../tree/v1.0-tick-data). See [CHANGELOG.md](CHANGELOG.md) for full details.
