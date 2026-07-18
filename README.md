@@ -91,11 +91,23 @@ The model demonstrates predictive edge, but transaction costs significantly redu
 └── README.md
 ```
 
+### Setup
+
+```bash
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS / Linux
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
 ### Running the pipeline
 
 ```bash
-pip install -r requirements.txt
-
 # Full pipeline — fetches 3 years of klines (~10 min), then builds everything
 python -m src.main
 
