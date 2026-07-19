@@ -145,6 +145,4 @@ Entry on first 15-minute candle touching the previous session's POC. Stop loss a
 
 ## Version History
 
-This is **v2**. The original pipeline (v1) used 6 months of raw tick data loaded via DuckDB. v2 replaced that with the API-based approach, expanded to 3 years, and added the backtester. The model accuracy held at 84% across both versions.
-
-v1 is preserved at tag [`v1.0-tick-data`](../../tree/v1.0-tick-data). See [CHANGELOG.md](CHANGELOG.md) for full details.
+This is **v2**. The original pipeline (v1) used 6 months of raw tick data loaded via DuckDB. v2 replaced that with the API-based approach, expanded to 3 years, and added the backtester. The model accuracy held at 84% across both versions. See [CHANGELOG.md](CHANGELOG.md) for full details.
